@@ -1,0 +1,33 @@
+CLAUDE.md
+
+# Secrets
+.env
+
+# Dataset (too large for git; place manually in data/raw/)
+data/raw/
+
+# Generated outputs
+data/processed/
+outputs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# PyTorch model files
+*.pt
+*.pth
