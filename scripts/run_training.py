@@ -42,9 +42,9 @@ def make_loaders(data: dict) -> tuple:
         ds  = TensorDataset(X_t, y_t)
         return DataLoader(ds, batch_size=CFG.batch_size, shuffle=shuffle)
 
-    train_loader = to_loader(data["Z_train"], data["y_train"], shuffle=True)
-    val_loader   = to_loader(data["Z_val"],   data["y_val"],   shuffle=False)
-    test_loader  = to_loader(data["Z_test"],  data["y_test"],  shuffle=False)
+    train_loader = to_loader(data["X_train"], data["y_train"], shuffle=True)
+    val_loader   = to_loader(data["X_val"],   data["y_val"],   shuffle=False)
+    test_loader  = to_loader(data["X_test"],  data["y_test"],  shuffle=False)
     return train_loader, val_loader, test_loader
 
 
@@ -91,6 +91,7 @@ def main():
         n_qubits=CFG.n_qubits,
         n_layers=CFG.n_layers,
         device=device,
+        input_dim=len(CFG.audio_features),
     )
     hybrid_history = train_model(hybrid_model, "Hybrid QNN", train_loader, val_loader)
 

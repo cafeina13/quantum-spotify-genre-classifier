@@ -67,7 +67,7 @@ def build_vqc_circuit(
     if device is None:
         device = get_device()
 
-    @qml.qnode(device, interface="torch", diff_method="parameter-shift")
+    @qml.qnode(device, interface="torch", diff_method="backprop")
     def circuit(inputs: torch.Tensor, weights: torch.Tensor):
         """
         inputs  : shape (n_qubits,)  — one feature per qubit, in [-π, π]
@@ -115,4 +115,5 @@ def draw_circuit(n_qubits: int = None, n_layers: int = None) -> None:
     dummy_weights = torch.zeros(*weight_shapes["weights"])
 
     print("\nVQC Circuit Diagram:")
-    print(qml.draw(circuit)(dummy_inputs, dummy_weights))
+    diagram = qml.draw(circuit)(dummy_inputs, dummy_weights)
+    print(diagram.encode('ascii', errors='replace').decode('ascii'))

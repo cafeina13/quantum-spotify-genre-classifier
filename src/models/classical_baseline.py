@@ -1,19 +1,15 @@
 """
 classical_baseline.py — Pure classical DNN for fair comparison.
 
-The baseline is intentionally constrained to a similar parameter budget as
-the hybrid model (~80–100 total parameters) so that any performance difference
-is attributable to the quantum layer, not raw model capacity.
+Architecture: 12 -> 128 -> 64 -> 32 -> 6
+  - Linear(12, 128) + ReLU + BatchNorm + Dropout(0.3)
+  - Linear(128, 64) + ReLU + BatchNorm + Dropout(0.3)
+  - Linear(64, 32)  + ReLU
+  - Linear(32, 6)              <- raw logits, no Softmax
 
-Architecture: 12 → 16 → 8 → 6  (raw logits, no Softmax)
-  - Linear(12, 16) + ReLU + BatchNorm1d(16)
-  - Linear(16, 8)  + ReLU
-  - Linear(8, 6)                     ← raw logits
-
-Why the same parameter budget?
-  Comparing a 36-parameter quantum model against a 1-million-parameter DNN
-  is not a fair ablation. Keeping the parameter counts similar isolates the
-  contribution of the quantum layer from the contribution of model capacity.
+Dropout is added here (unlike the hybrid) because the classical layers
+produce clean outputs — dropout acts as regularisation without the
+noise-amplification risk that wider post-QNN layers would carry.
 """
 
 import torch
@@ -28,7 +24,7 @@ class ClassicalBaseline(nn.Module):
 
     Parameters
     ----------
-    input_dim  : int, number of raw audio features (12)
+    input_dim : int, number of raw audio features (12)
     n_classes  : int, number of output genres (6)
     """
 
@@ -37,13 +33,20 @@ class ClassicalBaseline(nn.Module):
         n_classes = n_classes or len(CFG.genre_classes)
 
         self.net = nn.Sequential(
-            nn.Linear(input_dim, 16),
+            nn.Linear(input_dim, 128),
             nn.ReLU(),
-            nn.BatchNorm1d(16),
-            nn.Linear(16, 8),
+            nn.BatchNorm1d(128),
+            nn.Dropout(0.3),
+
+            nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(8, n_classes),
-            # No Softmax — CrossEntropyLoss expects raw logits
+            nn.BatchNorm1d(64),
+            nn.Dropout(0.3),
+
+            nn.Linear(64, 32),
+            nn.ReLU(),
+
+            nn.Linear(32, n_classes),
         )
 
         self._init_weights()
@@ -55,18 +58,7 @@ class ClassicalBaseline(nn.Module):
                 nn.init.zeros_(layer.bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Parameters
-        ----------
-        x : torch.Tensor, shape (batch_size, input_dim)
-            Raw audio features (any normalisation is fine; model handles it internally).
-
-        Returns
-        -------
-        torch.Tensor, shape (batch_size, n_classes) — raw logits.
-        """
         return self.net(x)
 
     def count_parameters(self) -> int:
-        """Return the total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)

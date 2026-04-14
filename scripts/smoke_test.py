@@ -38,7 +38,7 @@ def main():
     all_ok = True
 
     # ------------------------------------------------------------------
-    print("\n── 1. Imports ──────────────────────────────────────────────")
+    print("\n-- 1. Imports ----------------------------------------------")
     # ------------------------------------------------------------------
     try:
         import pennylane as qml
@@ -65,7 +65,7 @@ def main():
         all_ok = check("qiskit", False, str(e))
 
     # ------------------------------------------------------------------
-    print("\n── 2. Config & processed data ──────────────────────────────")
+    print("\n-- 2. Config & processed data ------------------------------")
     # ------------------------------------------------------------------
     try:
         from src.config import CFG
@@ -102,7 +102,7 @@ def main():
         sys.exit(1)
 
     # ------------------------------------------------------------------
-    print("\n── 3. Quantum device ───────────────────────────────────────")
+    print("\n-- 3. Quantum device ---------------------------------------")
     # ------------------------------------------------------------------
     try:
         from src.quantum.device import get_device
@@ -112,27 +112,31 @@ def main():
         all_ok &= check("default.qubit device", False, str(e))
 
     # ------------------------------------------------------------------
-    print("\n── 4. Circuit draw ─────────────────────────────────────────")
+    print("\n-- 4. Circuit draw -----------------------------------------")
     # ------------------------------------------------------------------
     try:
         from src.quantum.circuit import draw_circuit
         draw_circuit()
         all_ok &= check("circuit diagram", True)
+
     except Exception as e:
         all_ok &= check("circuit diagram", False, str(e))
 
     # ------------------------------------------------------------------
-    print("\n── 5. Hybrid model — forward pass ──────────────────────────")
+    print("\n-- 5. Hybrid model — forward pass --------------------------")
     # ------------------------------------------------------------------
     try:
         from src.models.hybrid_model import HybridGenreClassifier
 
-        model = HybridGenreClassifier(device=get_device(use_ibm_hardware=False))
+        model = HybridGenreClassifier(
+            device=get_device(use_ibm_hardware=False),
+            input_dim=len(CFG.audio_features),
+        )
         n_params = model.count_parameters()
         all_ok &= check("model instantiated", True, f"{n_params} trainable parameters")
 
-        # 2-sample mini-batch (keep it tiny for speed)
-        X_batch = torch.tensor(Z_train[:2], dtype=torch.float32)
+        # 2-sample mini-batch — hybrid now takes full 12 features (X_train)
+        X_batch = torch.tensor(data["X_train"][:2], dtype=torch.float32)
         y_batch = torch.tensor(y_train[:2], dtype=torch.long)
 
         logits = model(X_batch)
@@ -151,7 +155,7 @@ def main():
         model = None
 
     # ------------------------------------------------------------------
-    print("\n── 6. Hybrid model — backward pass ─────────────────────────")
+    print("\n-- 6. Hybrid model — backward pass -------------------------")
     # ------------------------------------------------------------------
     if model is not None:
         try:
@@ -170,7 +174,7 @@ def main():
             all_ok &= check("backward pass", False, str(e))
 
     # ------------------------------------------------------------------
-    print("\n── 7. Classical baseline ───────────────────────────────────")
+    print("\n-- 7. Classical baseline -----------------------------------")
     # ------------------------------------------------------------------
     try:
         from src.models.classical_baseline import ClassicalBaseline
@@ -193,12 +197,12 @@ def main():
         all_ok &= check("classical baseline", False, str(e))
 
     # ------------------------------------------------------------------
-    print("\n" + "─" * 60)
+    print("\n" + "-" * 60)
     if all_ok:
         print("  All checks passed. Safe to run scripts/run_training.py.")
     else:
         print("  One or more checks FAILED. Fix the issues above before training.")
-    print("─" * 60 + "\n")
+    print("-" * 60 + "\n")
     sys.exit(0 if all_ok else 1)
 
 

@@ -72,12 +72,12 @@ class Config:
     # Training
     # ------------------------------------------------------------------
     batch_size:    int   = 64
-    learning_rate: float = 0.01
-    n_epochs:      int   = 30
+    learning_rate: float = 0.001
+    n_epochs:      int   = 35
     test_size:     float = 0.20
     val_size:      float = 0.10    # fraction of the training split
     random_seed:   int   = 42
-    early_stop_patience: int = 5
+    early_stop_patience: int = 7
 
     # ------------------------------------------------------------------
     # Hardware
