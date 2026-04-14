@@ -3,8 +3,10 @@ device.py — PennyLane device factory.
 
 Returns the appropriate PennyLane device based on configuration:
   - Local simulator : "default.qubit"   (fast, no installation required)
-  - IBM simulator   : "qiskit.aer"      (requires pennylane-qiskit)
-  - IBM real hardware: "qiskit.ibmq"    (requires IBM Quantum account + token in .env)
+  - IBM real hardware: "qiskit.remote"  (pennylane-qiskit 0.38+, qiskit-ibm-runtime 0.43+)
+
+The old "qiskit.ibmq" device name was removed in pennylane-qiskit 0.38.
+IBM hardware is now accessed via QiskitRuntimeService + qiskit.remote device.
 
 IBM token is loaded from the .env file via python-dotenv. It is NEVER hardcoded.
 """
@@ -25,7 +27,7 @@ def get_device(
     use_ibm_hardware: bool = None,
     ibm_backend: str = None,
     n_qubits: int = None,
-) -> qml.devices.Device:
+):
     """
     Create and return a PennyLane device.
 
@@ -33,7 +35,7 @@ def get_device(
     ----------
     use_ibm_hardware : bool
         False → local default.qubit simulator (default from CFG).
-        True  → IBM hardware via qiskit.ibmq.
+        True  → IBM hardware via qiskit.remote + QiskitRuntimeService.
     ibm_backend : str
         IBM backend name, e.g. "ibm_brisbane" (only used when use_ibm_hardware=True).
     n_qubits : int
@@ -41,7 +43,7 @@ def get_device(
 
     Returns
     -------
-    qml.devices.Device
+    PennyLane device instance.
 
     Raises
     ------
@@ -57,7 +59,7 @@ def get_device(
         print(f"Using local simulator: default.qubit ({n_qubits} qubits)")
         return device
 
-    # --- IBM hardware path ---
+    # --- IBM hardware path (pennylane-qiskit 0.38+ / qiskit-ibm-runtime 0.43+) ---
     token = os.getenv("IBM_QUANTUM_TOKEN")
     if not token:
         raise EnvironmentError(
@@ -67,12 +69,12 @@ def get_device(
             "Get your token at: https://quantum.ibm.com/"
         )
 
-    # pennylane-qiskit plugin uses qiskit-ibm-runtime (not deprecated qiskit-ibmq-provider)
-    device = qml.device(
-        "qiskit.ibmq",
-        wires=n_qubits,
-        backend=ibm_backend,
-        ibmqx_token=token,
-    )
+    from qiskit_ibm_runtime import QiskitRuntimeService
+
+    service = QiskitRuntimeService(channel="ibm_quantum", token=token)
+    backend = service.backend(ibm_backend)
+
+    # "qiskit.remote" replaces the removed "qiskit.ibmq" device name
+    device = qml.device("qiskit.remote", wires=n_qubits, backend=backend)
     print(f"Using IBM hardware backend: {ibm_backend} ({n_qubits} qubits)")
     return device

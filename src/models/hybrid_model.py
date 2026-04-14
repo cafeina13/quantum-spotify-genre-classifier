@@ -65,7 +65,7 @@ class HybridGenreClassifier(nn.Module):
         self,
         n_qubits: int = None,
         n_layers: int = None,
-        device: qml.devices.Device = None,
+        device = None,
         use_autoencoder_bottleneck: bool = False,
         input_dim: int = 12,
     ):

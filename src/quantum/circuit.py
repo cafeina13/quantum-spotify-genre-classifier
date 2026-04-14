@@ -39,7 +39,7 @@ from src.quantum.device import get_device
 def build_vqc_circuit(
     n_qubits: int = None,
     n_layers: int = None,
-    device: qml.devices.Device = None,
+    device = None,
 ) -> tuple:
     """
     Build the Variational Quantum Circuit (QNode) for use with TorchLayer.
