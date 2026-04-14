@@ -6,17 +6,21 @@ All hyperparameters and paths live here. Every other module imports from this fi
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# Absolute path to the project root (the directory that contains src/)
+_ROOT = Path(__file__).resolve().parents[1]
+
 
 @dataclass
 class Config:
     # ------------------------------------------------------------------
-    # Paths
+    # Paths — all absolute so they work from any working directory
+    # (scripts/, notebooks/, project root, etc.)
     # ------------------------------------------------------------------
-    raw_data_path: Path = Path("data/raw/spotify_songs.csv")
-    processed_dir: Path = Path("data/processed")
-    figures_dir:   Path = Path("outputs/figures")
-    models_dir:    Path = Path("outputs/models")
-    results_dir:   Path = Path("outputs/results")
+    raw_data_path: Path = _ROOT / "data/raw/spotify_songs.csv"
+    processed_dir: Path = _ROOT / "data/processed"
+    figures_dir:   Path = _ROOT / "outputs/figures"
+    models_dir:    Path = _ROOT / "outputs/models"
+    results_dir:   Path = _ROOT / "outputs/results"
 
     # ------------------------------------------------------------------
     # Dataset
