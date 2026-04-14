@@ -44,7 +44,7 @@ def main():
     # 4. Train/val/test split (stratified)
     X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(X, y)
 
-    # 5. Scale features to [0, π]
+    # 5. Scale features to [-π, π]
     X_train_s, X_val_s, X_test_s, scaler = scale_features(X_train, X_val, X_test)
 
     # 6. Encode labels
@@ -52,7 +52,7 @@ def main():
 
     # 7. Verify
     assert X_train_s.max() <= float(np.pi) + 1e-6, "Scale check failed: max > π"
-    assert X_train_s.min() >= -1e-6, "Scale check failed: min < 0"
+    assert X_train_s.min() >= -float(np.pi) - 1e-6, "Scale check failed: min < -pi"
     assert np.isnan(X_train_s).sum() == 0, "NaN check failed"
     print("\nAll sanity checks passed.")
 

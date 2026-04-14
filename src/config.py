@@ -39,6 +39,17 @@ class Config:
         "tempo",
         "duration_ms",
     ])
+    # Top 6 features selected by F-score + mutual information analysis.
+    # These replace PCA as the bottleneck — fed directly into the quantum layer.
+    # Dropped: key, liveness, mode, loudness, valence, duration_ms (low discriminability)
+    selected_features: list = field(default_factory=lambda: [
+        "speechiness",
+        "danceability",
+        "energy",
+        "instrumentalness",
+        "tempo",
+        "acousticness",
+    ])
     target_column: str = "playlist_genre"
     genre_classes: list = field(default_factory=lambda: [
         "edm", "latin", "pop", "r&b", "rap", "rock"

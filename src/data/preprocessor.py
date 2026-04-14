@@ -2,11 +2,9 @@
 preprocessor.py — Data cleaning, feature scaling, and label encoding.
 
 Critical design note on scaling:
-  - Raw features are scaled to [0, π] with MinMaxScaler BEFORE PCA.
-    This is so angle-encoded RY gates (which span [0, π]) always receive
-    values in their natural range.
-  - After PCA, the projected output is unbounded (can be negative). A
-    SECOND MinMaxScaler is applied to bring PCA output back to [0, π].
+  - Raw features are scaled to [-π, π] with MinMaxScaler BEFORE feature selection.
+    Full [-π, π] range gives RY gates access to both rotation directions,
+    producing richer quantum states and better class separability than [0, π].
   - Both scalers are fitted on training data only to prevent data leakage.
 """
 
@@ -99,11 +97,13 @@ def scale_features(
     X_test: np.ndarray,
 ) -> tuple:
     """
-    Scale all feature splits to [0, π] using MinMaxScaler fitted on X_train only.
+    Scale all feature splits to [-π, π] using MinMaxScaler fitted on X_train only.
 
-    [0, π] is the natural range for RY rotation gate angles:
-      - RY(0)|0⟩ = |0⟩  (no rotation)
-      - RY(π)|0⟩ = |1⟩  (full flip)
+    [-π, π] gives RY gates access to both rotation directions on the Bloch sphere:
+      - RY(-π)|0⟩ rotates fully one way
+      - RY(0)|0⟩  = |0⟩ (no rotation — average features stay near ground state)
+      - RY(π)|0⟩  rotates fully the other way
+    This doubles the effective encoding range vs [0, π] and improves class separability.
 
     Parameters
     ----------
@@ -111,24 +111,24 @@ def scale_features(
 
     Returns
     -------
-    X_train_scaled, X_val_scaled, X_test_scaled : np.ndarray in [0, π]
+    X_train_scaled, X_val_scaled, X_test_scaled : np.ndarray in [-π, π]
     scaler : fitted MinMaxScaler (save this to apply the same transform later)
     """
-    scaler = MinMaxScaler(feature_range=(0, float(np.pi)))
+    scaler = MinMaxScaler(feature_range=(-float(np.pi), float(np.pi)))
     X_train_scaled = scaler.fit_transform(X_train)   # fit only on train
     X_val_scaled   = scaler.transform(X_val)
     X_test_scaled  = scaler.transform(X_test)
 
     print(
-        f"Feature scaling (raw → [0, π]):\n"
+        f"Feature scaling (raw -> [-pi, pi]):\n"
         f"  X_train range: [{X_train_scaled.min():.4f}, {X_train_scaled.max():.4f}]\n"
         f"  X_val   range: [{X_val_scaled.min():.4f}, {X_val_scaled.max():.4f}]\n"
         f"  X_test  range: [{X_test_scaled.min():.4f}, {X_test_scaled.max():.4f}]"
     )
 
     # Sanity checks
-    assert X_train_scaled.max() <= float(np.pi) + 1e-6, "Scaling error: values exceed π"
-    assert X_train_scaled.min() >= -1e-6, "Scaling error: values below 0"
+    assert X_train_scaled.max() <= float(np.pi) + 1e-6, "Scaling error: values exceed pi"
+    assert X_train_scaled.min() >= -float(np.pi) - 1e-6, "Scaling error: values below -pi"
 
     return X_train_scaled, X_val_scaled, X_test_scaled, scaler
 
@@ -139,7 +139,7 @@ def scale_pca_output(
     Z_test: np.ndarray,
 ) -> tuple:
     """
-    Re-scale PCA-projected features back to [0, π].
+    Re-scale PCA-projected features back to [-π, π].
 
     PCA output lives in an unbounded real space (positive and negative values).
     This second scaling step brings it back into the range expected by RY gates.
@@ -151,16 +151,16 @@ def scale_pca_output(
 
     Returns
     -------
-    Z_train_scaled, Z_val_scaled, Z_test_scaled : np.ndarray in [0, π]
+    Z_train_scaled, Z_val_scaled, Z_test_scaled : np.ndarray in [-π, π]
     pca_scaler : fitted MinMaxScaler
     """
-    pca_scaler = MinMaxScaler(feature_range=(0, float(np.pi)))
+    pca_scaler = MinMaxScaler(feature_range=(-float(np.pi), float(np.pi)))
     Z_train_scaled = pca_scaler.fit_transform(Z_train)
     Z_val_scaled   = pca_scaler.transform(Z_val)
     Z_test_scaled  = pca_scaler.transform(Z_test)
 
     print(
-        f"PCA output re-scaling (PCA space → [0, π]):\n"
+        f"PCA output re-scaling (PCA space -> [-pi, pi]):\n"
         f"  Z_train range: [{Z_train_scaled.min():.4f}, {Z_train_scaled.max():.4f}]\n"
         f"  Z_val   range: [{Z_val_scaled.min():.4f}, {Z_val_scaled.max():.4f}]\n"
         f"  Z_test  range: [{Z_test_scaled.min():.4f}, {Z_test_scaled.max():.4f}]"

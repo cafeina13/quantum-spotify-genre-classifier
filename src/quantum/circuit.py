@@ -7,8 +7,8 @@ Architecture
    Each of the 6 classical features is encoded as a rotation angle on one qubit:
      RY(x_i) |0⟩  for i in 0..n_qubits-1
    This is O(n) in circuit depth and preserves the continuous structure of
-   the audio features. Because inputs are pre-scaled to [0, π], the rotation
-   spans the full |0⟩ → |1⟩ range.
+   the audio features. Because inputs are pre-scaled to [-π, π], the rotation
+   spans both directions on the Bloch sphere for richer state preparation.
 
 2. StronglyEntanglingLayers (Ansatz)
    PennyLane's built-in template applies L layers of:
@@ -70,7 +70,7 @@ def build_vqc_circuit(
     @qml.qnode(device, interface="torch", diff_method="parameter-shift")
     def circuit(inputs: torch.Tensor, weights: torch.Tensor):
         """
-        inputs  : shape (n_qubits,)  — one feature per qubit, in [0, π]
+        inputs  : shape (n_qubits,)  — one feature per qubit, in [-π, π]
         weights : shape (n_layers, n_qubits, 3) — ansatz parameters
 
         Returns a list of n_qubits scalar expectation values.

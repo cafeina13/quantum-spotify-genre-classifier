@@ -3,7 +3,7 @@ hybrid_model.py — Hourglass Hybrid Genre Classifier.
 
 Architecture overview
 ---------------------
-Input (batch, 6)  ← PCA-reduced and re-scaled to [0, π] BEFORE passing in
+Input (batch, 6)  ← top-6 selected features, scaled to [-π, π] BEFORE passing in
   │
   ├─ [Optional] Classical Encoder  (12 → 6)   if use_autoencoder_bottleneck=True
   │   The Autoencoder encoder replaces the external PCA step.
@@ -116,7 +116,7 @@ class HybridGenreClassifier(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            If encoder is None: shape (batch_size, n_qubits), values in [0, π].
+            If encoder is None: shape (batch_size, n_qubits), values in [-π, π].
             If encoder is set:  shape (batch_size, input_dim=12).
 
         Returns

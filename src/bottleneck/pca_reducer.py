@@ -39,7 +39,7 @@ class PCAReducer:
         self.n_components  = n_components  or CFG.n_components
         self.random_state  = random_state  or CFG.random_seed
         self.pca           = PCA(n_components=self.n_components, random_state=self.random_state)
-        self.post_scaler   = MinMaxScaler(feature_range=(0, float(np.pi)))
+        self.post_scaler   = MinMaxScaler(feature_range=(-float(np.pi), float(np.pi)))
         self.is_fitted     = False
 
     # ------------------------------------------------------------------
@@ -78,7 +78,7 @@ class PCAReducer:
         """
         self._check_fitted()
         Z = self.pca.transform(X)
-        return self.post_scaler.transform(Z)
+        return np.clip(self.post_scaler.transform(Z), -float(np.pi), float(np.pi))
 
     def fit_transform(self, X_train: np.ndarray) -> np.ndarray:
         """Fit on X_train and return its transformed version."""

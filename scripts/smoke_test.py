@@ -87,8 +87,8 @@ def main():
         )
         import numpy as np
         all_ok &= check(
-            "Z_train range [0, π]",
-            Z_train.min() >= -1e-6 and Z_train.max() <= float(np.pi) + 1e-6,
+            "Z_train range [-pi, pi]",
+            Z_train.min() >= -float(np.pi) - 1e-6 and Z_train.max() <= float(np.pi) + 1e-6,
             f"[{Z_train.min():.4f}, {Z_train.max():.4f}]"
         )
         all_ok &= check(
