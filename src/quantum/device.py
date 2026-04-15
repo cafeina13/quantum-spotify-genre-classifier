@@ -71,7 +71,7 @@ def get_device(
 
     from qiskit_ibm_runtime import QiskitRuntimeService
 
-    service = QiskitRuntimeService(channel="ibm_quantum", token=token)
+    service = QiskitRuntimeService(channel="ibm_quantum_platform", token=token)
     backend = service.backend(ibm_backend)
 
     # "qiskit.remote" replaces the removed "qiskit.ibmq" device name

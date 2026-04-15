@@ -28,7 +28,6 @@ so no code change is needed when switching to hardware.
 (backprop would be faster on a simulator but fails on hardware.)
 """
 
-import numpy as np
 import pennylane as qml
 import torch
 
@@ -40,6 +39,7 @@ def build_vqc_circuit(
     n_qubits: int = None,
     n_layers: int = None,
     device = None,
+    diff_method: str = "backprop",
 ) -> tuple:
     """
     Build the Variational Quantum Circuit (QNode) for use with TorchLayer.
@@ -52,6 +52,9 @@ def build_vqc_circuit(
         Number of StronglyEntanglingLayers repetitions. Default: CFG.n_layers.
     device : qml.Device
         PennyLane device. If None, get_device() is called with CFG defaults.
+    diff_method : str
+        "backprop" for simulator training (requires classical encoder gradient flow).
+        "parameter-shift" for IBM hardware (backprop not supported on real devices).
 
     Returns
     -------
@@ -67,7 +70,7 @@ def build_vqc_circuit(
     if device is None:
         device = get_device()
 
-    @qml.qnode(device, interface="torch", diff_method="backprop")
+    @qml.qnode(device, interface="torch", diff_method=diff_method)
     def circuit(inputs: torch.Tensor, weights: torch.Tensor):
         """
         inputs  : shape (n_qubits,)  — one feature per qubit, in [-π, π]
@@ -102,8 +105,6 @@ def draw_circuit(n_qubits: int = None, n_layers: int = None) -> None:
     from src.quantum.circuit import draw_circuit
     draw_circuit()
     """
-    import numpy as np
-
     n_qubits = n_qubits or CFG.n_qubits
     n_layers = n_layers or CFG.n_layers
 

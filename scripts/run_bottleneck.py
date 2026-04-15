@@ -21,7 +21,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import numpy as np
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 

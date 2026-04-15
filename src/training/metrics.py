@@ -20,9 +20,6 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader
 
-from src.config import CFG
-
-
 # ---------------------------------------------------------------------------
 # Metrics computation
 # ---------------------------------------------------------------------------
@@ -258,5 +255,97 @@ def compare_models(
         save_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
         print(f"\nComparison figure saved to '{save_path}'.")
+
+    plt.show()
+
+
+# ---------------------------------------------------------------------------
+# Training progression chart (all runs)
+# ---------------------------------------------------------------------------
+
+# Known results from all training runs — update after each new run.
+# val_acc values taken from best validation epoch per run.
+_RUN_HISTORY = [
+    {"run": 1, "label": "Run 1\n(PCA + [0,π])",              "hybrid": 33.0, "baseline": 51.3},
+    {"run": 2, "label": "Run 2\n(feat. selection + [-π,π])", "hybrid": 39.6, "baseline": 51.3},
+    {"run": 3, "label": "Run 3\n(wide encoder + decoder)",   "hybrid": 48.7, "baseline": 54.2},
+    {"run": 4, "label": "Run 4\n(+ReduceLR p=4 f=0.5)",      "hybrid": 51.3, "baseline": 54.7},
+    {"run": 5, "label": "Run 5\n(+ReduceLR p=2 f=0.3)",      "hybrid": 48.6, "baseline": 54.2},
+]
+
+
+def plot_training_progression(
+    new_run: dict = None,
+    save_path: Path = None,
+) -> None:
+    """
+    Bar chart showing hybrid vs classical val accuracy across all training runs.
+    Visualises the narrowing gap as the architecture improved.
+
+    Parameters
+    ----------
+    new_run   : optional dict {"run": int, "label": str, "hybrid": float, "baseline": float}
+                Pass the latest run's results to append them automatically.
+    save_path : if provided, save figure here (PNG)
+    """
+    runs = list(_RUN_HISTORY)
+    if new_run is not None:
+        runs.append(new_run)
+
+    labels   = [r["label"]   for r in runs]
+    hybrid   = [r["hybrid"]   for r in runs]
+    baseline = [r["baseline"] for r in runs]
+    gaps     = [b - h for h, b in zip(hybrid, baseline)]
+
+    x     = np.arange(len(runs))
+    width = 0.35
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig.suptitle("Training Progression — All Runs", fontsize=14)
+
+    # Left: grouped bar chart
+    ax = axes[0]
+    bars_h = ax.bar(x - width/2, hybrid,   width, label="Hybrid QNN",        color="steelblue")
+    bars_b = ax.bar(x + width/2, baseline, width, label="Classical Baseline", color="darkorange")
+
+    # Annotate bars
+    for bar in bars_h:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
+                f"{bar.get_height():.1f}%", ha="center", va="bottom", fontsize=8)
+    for bar in bars_b:
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
+                f"{bar.get_height():.1f}%", ha="center", va="bottom", fontsize=8)
+
+    ax.set_xlabel("Training Run")
+    ax.set_ylabel("Validation Accuracy (%)")
+    ax.set_title("Val Accuracy per Run")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontsize=8)
+    ax.set_ylim(0, 70)
+    ax.axhline(16.7, color="gray", linestyle="--", linewidth=0.8, label="Random (16.7%)")
+    ax.legend(fontsize=8)
+    ax.grid(True, axis="y", alpha=0.3)
+
+    # Right: gap line chart
+    ax2 = axes[1]
+    ax2.plot(range(1, len(runs)+1), gaps, marker="o", color="crimson", linewidth=2, markersize=7)
+    for i, (g, r) in enumerate(zip(gaps, runs)):
+        ax2.text(i+1, g + 0.3, f"{g:.1f}%", ha="center", va="bottom", fontsize=9)
+
+    ax2.set_xlabel("Training Run")
+    ax2.set_ylabel("Gap: Baseline − Hybrid (%)")
+    ax2.set_title("Narrowing Accuracy Gap")
+    ax2.set_xticks(range(1, len(runs)+1))
+    ax2.set_xticklabels([r["label"] for r in runs], fontsize=8)
+    ax2.set_ylim(0, max(gaps) + 5)
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+
+    if save_path is not None:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"Training progression figure saved to '{save_path}'.")
 
     plt.show()

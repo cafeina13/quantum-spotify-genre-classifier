@@ -14,6 +14,8 @@ Run from the project root:
 
 import sys
 import json
+import matplotlib
+matplotlib.use("Agg")   # non-interactive backend — safe for scripted multi-figure saves
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -27,12 +29,12 @@ from src.data.preprocessor import load_processed
 from src.quantum.device import get_device
 from src.models.hybrid_model import HybridGenreClassifier
 from src.models.classical_baseline import ClassicalBaseline
-from src.training.trainer import Trainer
 from src.training.metrics import (
     compute_metrics,
     plot_training_history,
     plot_confusion_matrix,
     compare_models,
+    plot_training_progression,
 )
 
 
@@ -63,7 +65,7 @@ def main():
             shuffle=False,
         )
 
-    hybrid_test_loader   = to_loader(data["Z_test"], data["y_test"])
+    hybrid_test_loader   = to_loader(data["X_test"], data["y_test"])
     baseline_test_loader = to_loader(data["X_test"], data["y_test"])
 
     # --- Load hybrid model ---
@@ -89,51 +91,66 @@ def main():
     print("\n--- Classical Baseline Test Results ---")
     baseline_metrics = compute_metrics(baseline_model, baseline_test_loader, encoder)
 
-    # --- Plots ---
-    figures_dir = Path(CFG.figures_dir)
+    # --- Detect current run number for figure subfolder ---
+    results_dir = Path(CFG.results_dir)
+    existing_runs = sorted([
+        int(d.name.replace("run", ""))
+        for d in Path(CFG.figures_dir).glob("run*") if d.is_dir()
+        if d.name.replace("run", "").isdigit()
+    ])
+    current_run   = existing_runs[-1] + 1 if existing_runs else 4
+    figures_dir   = Path(CFG.figures_dir) / f"run{current_run}"
     figures_dir.mkdir(parents=True, exist_ok=True)
+    print(f"\nSaving figures for Run {current_run} to '{figures_dir}'")
+
+    # Also save flat copies to the top-level figures dir (for quick access)
+    figures_flat = Path(CFG.figures_dir)
+    figures_flat.mkdir(parents=True, exist_ok=True)
 
     # Training histories (loaded from saved JSON)
-    results_dir = Path(CFG.results_dir)
     with open(results_dir / "hybrid_history.json") as f:
         hybrid_history = json.load(f)
     with open(results_dir / "baseline_history.json") as f:
         baseline_history = json.load(f)
 
-    plot_training_history(
-        hybrid_history,
-        save_path=figures_dir / "hybrid_training_history.png",
-        title="Hybrid QNN Training History",
-    )
-    plot_training_history(
-        baseline_history,
-        save_path=figures_dir / "baseline_training_history.png",
-        title="Classical Baseline Training History",
-    )
+    for title, history, stem in [
+        ("Hybrid QNN Training History",        hybrid_history,   "hybrid_training_history"),
+        ("Classical Baseline Training History", baseline_history, "baseline_training_history"),
+    ]:
+        plot_training_history(history, save_path=figures_dir / f"{stem}.png", title=title)
+        plot_training_history(history, save_path=figures_flat / f"{stem}.png", title=title)
 
     # Confusion matrices
-    plot_confusion_matrix(
-        hybrid_metrics["confusion_matrix"],
-        class_names=list(encoder.classes_),
-        title="Hybrid QNN — Confusion Matrix (Test Set)",
-        save_path=figures_dir / "hybrid_confusion_matrix.png",
-    )
-    plot_confusion_matrix(
-        baseline_metrics["confusion_matrix"],
-        class_names=list(encoder.classes_),
-        title="Classical Baseline — Confusion Matrix (Test Set)",
-        save_path=figures_dir / "baseline_confusion_matrix.png",
-    )
+    for title, cm, stem in [
+        ("Hybrid QNN — Confusion Matrix (Test Set)",        hybrid_metrics["confusion_matrix"],   "hybrid_confusion_matrix"),
+        ("Classical Baseline — Confusion Matrix (Test Set)", baseline_metrics["confusion_matrix"], "baseline_confusion_matrix"),
+    ]:
+        plot_confusion_matrix(cm, class_names=list(encoder.classes_), title=title,
+                              save_path=figures_dir / f"{stem}.png")
+        plot_confusion_matrix(cm, class_names=list(encoder.classes_), title=title,
+                              save_path=figures_flat / f"{stem}.png")
 
     # Model comparison
-    compare_models(
-        hybrid_metrics,
-        baseline_metrics,
-        encoder,
-        save_path=figures_dir / "model_comparison.png",
+    compare_models(hybrid_metrics, baseline_metrics, encoder,
+                   save_path=figures_dir / "model_comparison.png")
+    compare_models(hybrid_metrics, baseline_metrics, encoder,
+                   save_path=figures_flat / "model_comparison.png")
+
+    # Training progression — all runs including this one
+    new_run = {
+        "run":      current_run,
+        "label":    f"Run {current_run}\n(+ReduceLROnPlateau)",
+        "hybrid":   round(max(hybrid_history["val_acc"]) * 100, 1),
+        "baseline": round(max(baseline_history["val_acc"]) * 100, 1),
+    }
+    plot_training_progression(
+        new_run=new_run,
+        save_path=figures_flat / "training_progression.png",
     )
 
-    print("\nStep 4 complete. All figures saved to 'outputs/figures/'.")
+    print(f"\nStep 4 complete.")
+    print(f"  Run-specific figures -> outputs/figures/run{current_run}/")
+    print(f"  Latest flat copies   -> outputs/figures/")
 
 
 if __name__ == "__main__":

@@ -14,7 +14,6 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 from src.config import CFG
 
@@ -116,9 +115,10 @@ class Trainer:
         n_epochs: int = None,
         patience: int = None,
         checkpoint_name: str = "best_model.pt",
+        scheduler=None,
     ) -> dict:
         """
-        Full training loop with early stopping and best-model checkpointing.
+        Full training loop with early stopping, LR scheduling, and checkpointing.
 
         Parameters
         ----------
@@ -127,33 +127,49 @@ class Trainer:
         n_epochs        : maximum number of training epochs (default: CFG.n_epochs)
         patience        : early-stop patience on val_loss (default: CFG.early_stop_patience)
         checkpoint_name : filename for the best checkpoint
+        scheduler       : optional LR scheduler (e.g. ReduceLROnPlateau).
+                          Must accept a single metric value via scheduler.step(val_loss).
 
         Returns
         -------
         history : dict with keys
-            "train_loss", "val_loss", "train_acc", "val_acc" (lists of per-epoch floats)
+            "train_loss", "val_loss", "train_acc", "val_acc", "lr" (per-epoch lists)
         """
         n_epochs = n_epochs or CFG.n_epochs
         patience = patience or CFG.early_stop_patience
         checkpoint_path = self.checkpoint_dir / checkpoint_name
 
-        history = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
-        best_val_loss  = float("inf")
+        history = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": [], "lr": []}
+        best_val_loss     = float("inf")
         epochs_no_improve = 0
 
         for epoch in range(1, n_epochs + 1):
             train_loss, train_acc = self.train_epoch(train_loader)
             val_loss, val_acc     = self.validate(val_loader)
 
+            # Step scheduler on val_loss (ReduceLROnPlateau expects the metric)
+            current_lr = self.optimizer.param_groups[0]["lr"]
+            if scheduler is not None:
+                scheduler.step(val_loss)
+                new_lr = self.optimizer.param_groups[0]["lr"]
+            else:
+                new_lr = current_lr
+
             history["train_loss"].append(train_loss)
             history["val_loss"].append(val_loss)
             history["train_acc"].append(train_acc)
             history["val_acc"].append(val_acc)
+            history["lr"].append(new_lr)
+
+            lr_tag = f"  lr: {new_lr:.2e}"
+            if new_lr < current_lr:
+                lr_tag += "  ↓ LR reduced"
 
             print(
                 f"Epoch [{epoch:>3}/{n_epochs}]  "
                 f"train_loss: {train_loss:.4f}  train_acc: {train_acc:.3f}  "
                 f"val_loss: {val_loss:.4f}  val_acc: {val_acc:.3f}"
+                + lr_tag
             )
 
             # Checkpoint if best

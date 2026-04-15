@@ -85,7 +85,7 @@ class Config:
     use_ibm_hardware: bool = False
     # Set ibm_backend to whichever 7-qubit device is available on your account.
     # Check available backends at: https://quantum.ibm.com/
-    ibm_backend: str = "ibm_brisbane"
+    ibm_backend: str = "ibm_fez"
 
 
 # Singleton — import this object everywhere:
